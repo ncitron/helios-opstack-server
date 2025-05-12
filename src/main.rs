@@ -1,12 +1,13 @@
 use alloy::{
-    primitives::{address, Address, Bytes},
+    primitives::{Address, Bytes, address},
     signers::Signature,
 };
-use clap::Parser;
 use axum::{Json, Router, extract::State, routing::get};
-use kona_p2p::Network;
+use clap::Parser;
+use discv5::{ConfigBuilder, enr::CombinedKey};
+use kona_p2p::{LocalNode, Network};
 use kona_registry::ROLLUP_CONFIGS;
-use libp2p::Multiaddr;
+use libp2p::{Multiaddr, identity::Keypair};
 use op_alloy_rpc_types_engine::{OpExecutionPayload, OpNetworkPayloadEnvelope};
 use serde::{Deserialize, Serialize};
 use ssz::Encode;
@@ -22,7 +23,13 @@ use tracing_subscriber::{EnvFilter, FmtSubscriber};
 async fn main() {
     enable_tracing();
     let cli = Cli::parse();
-    start(&cli.network, cli.disc_port, cli.gossip_port, cli.server_port).await;
+    start(
+        &cli.network,
+        cli.disc_port,
+        cli.gossip_port,
+        cli.server_port,
+    )
+    .await;
 }
 
 #[derive(Parser)]
@@ -31,6 +38,7 @@ struct Cli {
     network: String,
     #[arg(short, long)]
     disc_port: u16,
+    #[arg(long)]
     #[arg(short, long)]
     gossip_port: u16,
     #[arg(short, long)]
@@ -43,7 +51,15 @@ async fn start(network: &str, disc_port: u16, gossip_port: u16, server_port: u16
     let gossip = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), gossip_port);
     let mut gossip_addr = Multiaddr::from(gossip.ip());
     gossip_addr.push(libp2p::multiaddr::Protocol::Tcp(gossip.port()));
-    let disc = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), disc_port);
+
+    let CombinedKey::Secp256k1(k256_key) = CombinedKey::generate_secp256k1() else {
+        unreachable!()
+    };
+    let advertise_ip = IpAddr::V4(Ipv4Addr::UNSPECIFIED);
+    let disc = LocalNode::new(k256_key, advertise_ip, disc_port, disc_port);
+    let disc_listen = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), disc_port);
+
+    let gossip_key = Keypair::generate_secp256k1();
 
     let cfg = ROLLUP_CONFIGS
         .get(&chain_config.chain_id)
@@ -52,15 +68,19 @@ async fn start(network: &str, disc_port: u16, gossip_port: u16, server_port: u16
 
     let mut network = Network::builder()
         .with_rollup_config(cfg)
-        .with_chain_id(chain_config.chain_id)
         .with_unsafe_block_signer(chain_config.unsafe_signer)
         .with_discovery_address(disc)
         .with_gossip_address(gossip_addr)
+        .with_keypair(gossip_key)
+        .with_discovery_config(ConfigBuilder::new(disc_listen.into()).build())
         .build()
         .expect("Failed to builder network driver");
 
     let mut payload_recv = network.unsafe_block_recv();
-    network.start().expect("Failed to start network driver");
+    network
+        .start()
+        .await
+        .expect("Failed to start network driver");
 
     let state = Arc::new(RwLock::new(ServerState {
         latest_commitment: None,
