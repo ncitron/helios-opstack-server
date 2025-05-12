@@ -4,14 +4,15 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-alloy = { version = "0.14.0" }
-kona-p2p = { git = "https://github.com/op-rs/kona", rev = "b5ac86537439abe49fa65279ec4e1f8eb5f3104c" }
-kona-registry = { git = "https://github.com/op-rs/kona", rev = "b5ac86537439abe49fa65279ec4e1f8eb5f3104c" }
-op-alloy-rpc-types-engine = "0.14.1"
+alloy = { version = "0.15.10" }
+kona-p2p = { git = "https://github.com/op-rs/kona", rev = "b079a57fcfbb444d051e859f1e80f445daf5a2c7" }
+kona-registry = { git = "https://github.com/op-rs/kona", rev = "b079a57fcfbb444d051e859f1e80f445daf5a2c7" }
+op-alloy-rpc-types-engine = "0.15.2"
 ethereum_ssz = "0.9"
 
 libp2p = { version = "0.55.0", features = ["macros", "tokio", "tcp", "noise", "gossipsub", "ping"] }
-tokio = "1.44.2"
+discv5 = "0.9.1"
+tokio = { version = "1.44.2", features = ["full"] }
 axum = "0.8.3"
 
 tracing = "0.1.41"
