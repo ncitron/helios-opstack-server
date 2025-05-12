@@ -4,7 +4,7 @@ use alloy::{
 };
 use axum::{Json, Router, extract::State, routing::get};
 use clap::Parser;
-use discv5::{ConfigBuilder, enr::CombinedKey};
+use discv5::{ConfigBuilder, Enr, enr::CombinedKey};
 use kona_p2p::{LocalNode, Network};
 use kona_registry::ROLLUP_CONFIGS;
 use libp2p::{Multiaddr, identity::Keypair};
@@ -12,6 +12,7 @@ use op_alloy_rpc_types_engine::{OpExecutionPayload, OpNetworkPayloadEnvelope};
 use serde::{Deserialize, Serialize};
 use ssz::Encode;
 use std::{
+    borrow::BorrowMut,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     sync::Arc,
 };
@@ -75,6 +76,16 @@ async fn start(network: &str, disc_port: u16, gossip_port: u16, server_port: u16
         .with_discovery_config(ConfigBuilder::new(disc_listen.into()).build())
         .build()
         .expect("Failed to builder network driver");
+
+    for bootnode in chain_config.bootnodes {
+        network
+            .discovery
+            .borrow_mut()
+            .disc
+            .borrow_mut()
+            .add_enr(bootnode)
+            .unwrap();
+    }
 
     let mut payload_recv = network.unsafe_block_recv();
     network
@@ -182,6 +193,7 @@ async fn chain_id_handler(State(state): State<Arc<RwLock<ServerState>>>) -> Json
 struct ChainConfig {
     unsafe_signer: Address,
     chain_id: u64,
+    bootnodes: Vec<Enr>,
 }
 
 impl From<&str> for ChainConfig {
@@ -190,10 +202,23 @@ impl From<&str> for ChainConfig {
             "op-mainnet" => ChainConfig {
                 unsafe_signer: address!("AAAA45d9549EDA09E70937013520214382Ffc4A2"),
                 chain_id: 10,
+                bootnodes: Vec::new(),
             },
             "base" => ChainConfig {
                 unsafe_signer: address!("Af6E19BE0F9cE7f8afd49a1824851023A8249e8a"),
                 chain_id: 8453,
+                bootnodes: Vec::new(),
+            },
+            "unichain" => ChainConfig {
+                unsafe_signer: address!("0x833C6f278474A78658af91aE8edC926FE33a230e"),
+                chain_id: 130,
+                bootnodes: vec![
+                    "enr:-Iq4QNqqxkwND5YdrKxSVR8RoZHwU6Qa42ff_0XNjD428_n9OTEy3N9iR4uZTfQxACB00fT7Y8__q238kpb6TcsRvw-GAZZoqRJLgmlkgnY0gmlwhDQOHieJc2VjcDI1NmsxoQLqnqr2lfrL5TCQvrelsEEagUWbv25sqsFR5YfudxIKG4N1ZHCCdl8",
+                    "enr:-Iq4QBtf4EkiX7NfYxCn6CKIh3ZJqjk70NWS9hajT1k3W7-3ePWBc5-g19tBqYAMWlfSSz3sir024EQc5YH3TAxVY76GAZZopWrWgmlkgnY0gmlwhAOUZK2Jc2VjcDI1NmsxoQN3trHnKYTV1Q4ArpNP_qmCkCIm_pL6UNpCM0wnUNjkBYN1ZHCCdl8",
+                ]
+                .iter()
+                .map(|v| v.parse().unwrap())
+                .collect::<_>(),
             },
             _ => panic!("network not recognized"),
         }
