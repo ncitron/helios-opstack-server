@@ -5,15 +5,15 @@ edition = "2024"
 rust-version = "1.88"
 
 [dependencies]
-alloy = "1.1.2"
-kona-disc = { git = "https://github.com/op-rs/kona", rev = "d7d4b5da8022f4b7a060d4ef6723b5b236ff7f2e" }
-kona-node-service = { git = "https://github.com/op-rs/kona", rev = "d7d4b5da8022f4b7a060d4ef6723b5b236ff7f2e" }
-kona-registry = { git = "https://github.com/op-rs/kona", rev = "d7d4b5da8022f4b7a060d4ef6723b5b236ff7f2e" }
+alloy = "1.6.3"
+kona-disc = { git = "https://github.com/op-rs/kona", rev = "2586fc56ea0b0f17a8b47c44196012e33a321ea7" }
+kona-node-service = { git = "https://github.com/op-rs/kona", rev = "2586fc56ea0b0f17a8b47c44196012e33a321ea7" }
+kona-registry = { git = "https://github.com/op-rs/kona", rev = "2586fc56ea0b0f17a8b47c44196012e33a321ea7" }
 op-alloy-rpc-types-engine = "0.22.4"
-ethereum_ssz = "0.9"
+ethereum_ssz = "0.9.1"
 
 libp2p = { version = "0.56.0", features = ["macros", "tokio", "tcp", "noise", "gossipsub", "ping"] }
-discv5 = "0.9.1"
+discv5 = "0.10.4"
 tokio = { version = "1.44.2", features = ["full"] }
 axum = "0.8.3"
 
